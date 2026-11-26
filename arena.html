@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Арена класифікаторів Watchers</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* VOICE: брифінг розвідки — стримано, точно, з одним гострим акцентом
+   IDEA: табло відбору супутникового «спостерігача»: сім кандидатів, ваги місії, досьє
+   PICTURE: живе табло, рядки якого переїжджають при зміні ваг, + радар-досьє обраної моделі
+   COLOUR and TYPE: лід #e3eef2 / чорнило #08202b, сигнальний помаранч кораблів #ff6a1f; Space Grotesk + Inter
+   LAYOUT: шапка з переможцем, ваги | табло | досьє; нижче карта компромісів і дані */
+:root{color-scheme:light dark;--bg:light-dark(#e3eef2,#061820);--ink:light-dark(#08202b,#dcebf1);--mute:light-dark(#4b6470,#8fa9b4);--card:light-dark(#f6fbfc,#0b2430);--line:light-dark(#c4d6dd,#1d3c49);--acc:#ff6a1f;--air:#3f7fe8;--veh:#1fae6a;--bar:light-dark(#08202b,#cfe3ea)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Inter,system-ui,sans-serif;overflow-x:clip}
+h1,h2,h3,.num{font-family:"Space Grotesk",Inter,sans-serif}
+.band{padding:clamp(22px,3.5vw,52px) max(5vw,16px)}
+.wrap{max-width:1240px;margin:0 auto}
+header.band{padding-bottom:12px}
+h1{font-size:clamp(30px,4.4vw,48px);line-height:1.05;margin:0 0 6px;font-weight:700;text-wrap:balance}
+.lead{color:var(--mute);margin:0;max-width:68ch}
+.win{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px 18px;margin-top:18px;padding:16px 20px;background:var(--ink);color:var(--bg);border-radius:14px}
+.win .k{font-size:14px;opacity:.75}.win .v{font:700 clamp(26px,3.6vw,40px)/1.05 "Space Grotesk",sans-serif}
+.win .why{font-size:15px;opacity:.85;flex-basis:100%}
+.grid{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.35fr) minmax(0,1fr);gap:18px;align-items:start}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px}
+h2{font-size:20px;margin:0 0 12px;font-weight:600}
+.sl{margin:14px 0}.sl label{display:flex;justify-content:space-between;font-size:15px;font-weight:500}
+.sl output{font-variant-numeric:tabular-nums;color:var(--mute)}
+input[type=range]{width:100%;height:44px;accent-color:var(--acc)}
+.presets{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+button{font:500 14px Inter,sans-serif;min-height:44px;padding:8px 12px;border-radius:10px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer}
+button:hover{border-color:var(--ink)}button:focus-visible,input:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+button[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chk{display:flex;gap:10px;align-items:center;font-size:14px;margin-top:14px;color:var(--mute)}.chk input{width:20px;height:20px;accent-color:var(--acc)}
+.board{position:relative}
+.row{position:absolute;left:0;right:0;height:58px;display:grid;grid-template-columns:30px minmax(0,1fr) 56px;gap:10px;align-items:center;padding:0 10px;border-radius:10px;cursor:pointer;transition:top .55s cubic-bezier(.2,.8,.2,1),background .2s}
+.row:hover,.row.sel{background:light-dark(#e7f1f4,#103040)}
+.row .rk{font:700 20px "Space Grotesk";color:var(--mute);text-align:center}
+.row .nm{font-weight:600;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .nm small{font-weight:400;color:var(--mute);margin-left:6px}
+.track{height:8px;border-radius:4px;background:var(--line);margin-top:6px;overflow:hidden}
+.fill{height:100%;background:var(--bar);border-radius:4px;transition:width .55s}
+.row.out .fill{background:var(--mute);opacity:.45}.row.out .nm{opacity:.6}
+.row.top .fill{background:var(--acc)}
+.row .sc{font:600 16px "Space Grotesk";text-align:right;font-variant-numeric:tabular-nums}
+.tag{display:inline-block;font-size:12px;padding:1px 7px;border-radius:20px;border:1px solid var(--line);color:var(--mute);margin-left:6px;vertical-align:1px}
+.dos h3{font-size:24px;margin:0;line-height:1.1}.dos .sub{color:var(--mute);font-size:14px;margin:2px 0 8px}
+.radar{position:relative;height:250px}.radar svg{position:absolute;inset:0;width:100%;height:100%}
+dl{display:grid;grid-template-columns:1fr auto;gap:4px 12px;margin:8px 0 0;font-size:14px}
+dt{color:var(--mute)}dd{margin:0;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:500}
+.note{font-size:14px;margin:12px 0 0;padding-top:10px;border-top:1px solid var(--line)}
+.fig{position:relative;min-height:380px}.fig>svg{position:absolute;inset:0;width:100%;height:100%}
+.two{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:18px}
+.drop{border:2px dashed var(--line);border-radius:14px;padding:20px;text-align:center;color:var(--mute)}
+.drop.on{border-color:var(--acc);color:var(--ink)}
+.src{font-size:13px;color:var(--mute)}
+p{max-width:70ch}
+@media(max-width:1000px){.grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.grid .dos{grid-column:1/-1}.two{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:640px){.grid{grid-template-columns:minmax(0,1fr)}.row{height:58px}}
+@media(prefers-reduced-motion:reduce){.row,.fill{transition:none}}
+</style>
+</head>
+<body>
+<header class="band"><div class="wrap">
+  <h1>Арена класифікаторів · Watchers</h1>
+  <p class="lead">Сім моделей з лаб. 3–11, оцінені однією груповою 5-fold крос-валідацією. Оберіть, що важливіше для місії, і табло перерахує переможця. Претенденти — лише моделі, статистично нерозрізненні з лідером за F1-macro.</p>
+  <div class="win" aria-live="polite"><span class="k">Переможець за поточними вагами</span><span class="v" id="winName">—</span><span class="why" id="winWhy"></span></div>
+</div></header>
+
+<main class="band" style="padding-top:8px"><div class="wrap">
+ <div class="grid">
+  <section class="card" aria-labelledby="h-w">
+    <h2 id="h-w">Пріоритети місії</h2>
+    <div id="sliders"></div>
+    <div class="presets" id="presets"></div>
+    <label class="chk"><input type="checkbox" id="onlyC" checked> Лише претенденти (рівні з лідером за F1)</label>
+  </section>
+  <section class="card" aria-labelledby="h-b">
+    <h2 id="h-b">Табло</h2>
+    <div class="board" id="board"></div>
+  </section>
+  <section class="card dos" aria-labelledby="dName" id="dos"></section>
+ </div>
+
+ <div class="two" style="margin-top:18px">
+  <section class="card">
+    <h2>Карта компромісів: загальна якість проти пошуку кораблів</h2>
+    <div class="fig"><svg id="scatter" role="img" aria-label="Діаграма розсіювання F1-macro проти Recall ship"></svg></div>
+    <p class="src">Розмір точки — швидкість передбачення (більша = швидша). Помаранчева — поточний переможець.</p>
+  </section>
+  <section class="card">
+    <h2>Дані</h2>
+    <p class="src" id="srcNote"></p>
+    
+    <p class="note"><a href="./" style="color:inherit;font-weight:600">← До гри SKYWATCH</a></p><p class="note"><b>Як рахується оцінка.</b> Кожен критерій нормується між найгіршою (0) і найкращою (1) моделлю: F1-macro, Recall(ship), швидкість (логарифм часу передбачення), пояснюваність (експертний ранг команди: 1 — дерево, 7 — MLP). Оцінка — зважена сума. Те саме правило реалізоване в ноутбуці Lab12, частина 3.</p>
+  </section>
+ </div>
+</div></main>
+
+<script>
+{
+const MODELS=[
+ {n:"k-NN",lab:3,p:"k = 15, euclidean, distance",f1:0.8884,acc:0.9762,rs:0.607,ps:0.818,fit:0.30,pr:301.1939,interp:4,plus:"Висока точність на кораблях (0.82): якщо каже «корабель» — зазвичай правий",minus:"Найповільніше передбачення: перебирає 42 009 об'єктів train на кожен запит"},
+ {n:"GaussianNB",lab:4,p:"без параметрів",f1:0.8693,acc:0.9615,rs:0.831,ps:0.551,fit:0.15,pr:1.5951,interp:3,plus:"Знаходить найбільше кораблів — 83 % на CV — і навчається за соті частки секунди",minus:"Ціна — хибні тривоги: лише 55 % його «кораблів» справжні"},
+ {n:"Дерево рішень",lab:5,p:"max_depth = 6",f1:0.9003,acc:0.9759,rs:0.675,ps:0.814,fit:0.27,pr:0.2560,interp:1,plus:"Найпрозоріше: правило читається з першого розбиття (size_bucket ≤ 1.5)",minus:"Поза зоною рівності з лідером; на test_clean F1 лише 0.848"},
+ {n:"Логістична регресія",lab:6,p:"L2, C = 1.0, multinomial",f1:0.8926,acc:0.9753,rs:0.649,ps:0.785,fit:0.98,pr:0.6093,interp:2,plus:"Один із найвищих ROC-AUC (0.990), коефіцієнти пояснюють рішення",minus:"Лінійна межа: пропускає третину кораблів, плутаючи їх із машинами"},
+ {n:"Random Forest",lab:9,p:"100 дерев",f1:0.9180,acc:0.9815,rs:0.742,ps:0.822,fit:4.13,pr:8.9422,interp:5,plus:"Лідер групової CV і найкращий на test_clean; стійкий до шуму в мітках",minus:"Пояснюваність гірша; Recall(ship) сильно залежить від сцени (±0.12)"},
+ {n:"Gradient Boosting",lab:10,p:"lr = 0.1, 700 ітерацій",f1:0.9169,acc:0.9822,rs:0.729,ps:0.814,fit:138.47,pr:22.2849,interp:6,plus:"Статистично рівний лідеру, найвищий ROC-AUC на valid_clean (0.995)",minus:"138 с навчання, чутливий до шуму в мітках (F1 0.891 → 0.852)"},
+ {n:"MLP",lab:11,p:"(8,), 35 епох",f1:0.9039,acc:0.9778,rs:0.676,ps:0.823,fit:4.25,pr:0.4004,interp:7,plus:"Крихітна мережа — 131 параметр — і статистично рівна ансамблям",minus:"«Чорна скринька», результат залежить від seed"}
+];
+const CRIT=[{k:'f1',t:'F1-macro (загальна якість)'},{k:'ship',t:'Recall(ship) — пошук кораблів'},{k:'speed',t:'Швидкість передбачення'},{k:'interp',t:'Пояснюваність'}];
+const PRESETS=[
+ {t:'Як у Lab12',w:{f1:50,ship:25,speed:15,interp:10}},
+ {t:'Тільки якість',w:{f1:100,ship:0,speed:0,interp:0}},
+ {t:'Мисливець на кораблі',w:{f1:35,ship:65,speed:0,interp:0}},
+ {t:'Бортовий комп\'ютер дрона',w:{f1:45,ship:15,speed:40,interp:0}},
+ {t:'Пояснити генералу',w:{f1:45,ship:10,speed:0,interp:45}}];
+let W={...PRESETS[0].w}, sel=null, contenders=["Random Forest", "Gradient Boosting", "MLP", "Логістична регресія", "k-NN"], srcLbl='Lab12: групова 5-fold CV на train (42 009 об\u2019єктів, 2 085 кадрів), однакові фолди для всіх моделей. Претенденти — моделі, статистично рівні лідеру за парним бутстрепом. Фінальна модель команди: Random Forest.';
+const TOL=.02;
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const $=id=>document.getElementById(id);
+const fmt=(v,d=3)=>Number(v).toFixed(d);
+const ms=v=>v<1?fmt(v,2):v<10?fmt(v,1):Math.round(v);
+
+$('sliders').innerHTML=CRIT.map(c=>`<div class="sl"><label for="s-${c.k}">${c.t}<output id="o-${c.k}"></output></label><input type="range" id="s-${c.k}" min="0" max="100" step="5"></div>`).join('');
+$('presets').innerHTML=PRESETS.map((p,i)=>`<button data-p="${i}" aria-pressed="${i===0}">${p.t}</button>`).join('');
+
+function scores(){
+  const norm=(arr,hi=true)=>{const mn=Math.min(...arr),mx=Math.max(...arr);return arr.map(v=>{const r=(v-mn)/(mx-mn||1);return hi?r:1-r})};
+  const f=norm(MODELS.map(m=>m.f1)),s=norm(MODELS.map(m=>m.rs)),sp=norm(MODELS.map(m=>Math.log10(m.pr)),false),it=norm(MODELS.map(m=>m.interp),false);
+  const tot=W.f1+W.ship+W.speed+W.interp||1, best=Math.max(...MODELS.map(m=>m.f1));
+  return MODELS.map((m,i)=>({m,c:{f1:f[i],ship:s[i],speed:sp[i],interp:it[i]},score:(W.f1*f[i]+W.ship*s[i]+W.speed*sp[i]+W.interp*it[i])/tot,
+    cont:contenders?contenders.includes(m.n):best-m.f1<=TOL+1e-9}));
+}
+function render(){
+  CRIT.forEach(c=>{$('s-'+c.k).value=W[c.k];$('o-'+c.k).textContent=W[c.k]});
+  const only=$('onlyC').checked, S=scores();
+  const rank=[...S].sort((a,b)=>(only?(b.cont-a.cont):0)||b.score-a.score);
+  const win=rank.find(r=>!only||r.cont)||rank[0];
+  if(!sel)sel=win.m.n;
+  const H=62,b=$('board');b.style.height=(rank.length*H)+'px';
+  if(!b.children.length)b.innerHTML=MODELS.map(m=>`<div class="row" role="button" tabindex="0" data-n="${esc(m.n)}"><span class="rk"></span><div><div class="nm"></div><div class="track"><div class="fill"></div></div></div><span class="sc"></span></div>`).join('');
+  rank.forEach((r,i)=>{const el=[...b.children].find(e=>e.dataset.n===r.m.n);
+    el.style.top=(i*H)+'px';el.querySelector('.rk').textContent=i+1;
+    el.querySelector('.nm').innerHTML=`${esc(r.m.n)}<small>лаб. ${r.m.lab}</small>${r.cont?'':'<span class="tag">поза зоною рівності</span>'}`;
+    el.querySelector('.fill').style.width=(100*r.score).toFixed(1)+'%';el.querySelector('.sc').textContent=fmt(r.score,2);
+    el.classList.toggle('out',only&&!r.cont);el.classList.toggle('top',r===win);el.classList.toggle('sel',r.m.n===sel);el.setAttribute('aria-label',`${i+1}. ${r.m.n}, оцінка ${fmt(r.score,2)}`)});
+  $('winName').textContent=win.m.n;
+  const strong=CRIT.map(c=>({c,v:win.c[c.k]*W[c.k]})).sort((a,b)=>b.v-a.v).filter(x=>x.v>0).slice(0,2).map(x=>x.c.t.split(' (')[0].split(' —')[0].toLowerCase());
+  $('winWhy').textContent=`F1-macro ${fmt(win.m.f1,4)} · Recall(ship) ${fmt(win.m.rs)} · ${ms(win.m.pr)} мс на 1000 об'єктів. Виграє за рахунок: ${strong.join(' і ')||'—'}.`;
+  dossier(S.find(r=>r.m.n===sel));scatter(S,win);
+  $('srcNote').textContent=srcLbl;
+}
+function dossier(r){
+  const m=r.m,a=k=>(m.approx||[]).includes(k)?'≈ ':'';
+  const SH=['F1-macro','Кораблі','Швидкість','Пояснення'];const pts=CRIT.map((c,i)=>{const ang=-Math.PI/2+i*Math.PI/2;return [Math.cos(ang),Math.sin(ang),r.c[c.k],SH[i]]});
+  $('dos').innerHTML=`<h3 id="dName">${esc(m.n)}</h3><p class="sub">Лаб. ${m.lab} · ${esc(m.p)}</p><div class="radar"><svg id="rad" aria-label="Профіль моделі за чотирма критеріями"></svg></div>
+   <dl><dt>F1-macro</dt><dd>${fmt(m.f1,4)}</dd><dt>Accuracy</dt><dd>${fmt(m.acc,4)}</dd><dt>Recall(ship)</dt><dd>${fmt(m.rs)}</dd><dt>Precision(ship)</dt><dd>${a('ps')}${fmt(m.ps,2)}</dd><dt>Навчання</dt><dd>${a('fit')}${m.fit<1?fmt(m.fit,2):fmt(m.fit,m.fit<10?2:0)} с</dd><dt>Передбачення, 1000 об'єктів</dt><dd>${a('pr')}${ms(m.pr)} мс</dd></dl>
+   <p class="note"><b>Сила.</b> ${esc(m.plus)}<br><b>Слабкість.</b> ${esc(m.minus)}</p>`;
+  const s=$('rad'),draw=()=>{const Wd=s.clientWidth,Hh=s.clientHeight,cx=Wd/2,cy=Hh/2,R=Math.min(Wd/2-98,Hh/2-28);
+    const ring=[.25,.5,.75,1].map(k=>`<polygon points="${pts.map(p=>[cx+p[0]*R*k,cy+p[1]*R*k].join(',')).join(' ')}" fill="none" stroke="var(--line)"/>`).join('');
+    const poly=pts.map(p=>[cx+p[0]*R*Math.max(.04,p[2]),cy+p[1]*R*Math.max(.04,p[2])].join(',')).join(' ');
+    const lb=pts.map((p,i)=>`<text x="${cx+p[0]*(R+14)}" y="${cy+p[1]*(R+14)+(i===0?-2:i===2?12:4)}" text-anchor="${p[0]>.5?'start':p[0]<-.5?'end':'middle'}" font-size="12" fill="var(--mute)">${esc(p[3])}</text>`).join('');
+    s.innerHTML=ring+`<polygon points="${poly}" fill="var(--acc)" fill-opacity=".22" stroke="var(--acc)" stroke-width="2"/>`+lb};
+  draw();new ResizeObserver(draw).observe(s);
+}
+let scRO=null;
+function scatter(S,win){
+  const s=$('scatter');const draw=()=>{const Wd=s.clientWidth,Hh=s.clientHeight,pl=52,pr=20,pt=16,pb=44;
+   const xs=S.map(r=>r.m.rs),ys=S.map(r=>r.m.f1);const x0=Math.min(...xs)-.03,x1=Math.max(...xs)+.03,y0=Math.min(...ys)-.006,y1=Math.max(...ys)+.006;
+   const X=v=>pl+(v-x0)/(x1-x0)*(Wd-pl-pr),Y=v=>pt+(1-(v-y0)/(y1-y0))*(Hh-pt-pb);const small=Wd<520;
+   let g='';for(let i=0;i<=4;i++){const yv=y0+(y1-y0)*i/4,xv=x0+(x1-x0)*i/4;g+=`<line x1="${pl}" x2="${Wd-pr}" y1="${Y(yv)}" y2="${Y(yv)}" stroke="var(--line)"/>`;
+     if(!small||i%2===0)g+=`<text x="${pl-6}" y="${Y(yv)+4}" text-anchor="end" font-size="12" fill="var(--mute)">${fmt(yv,3)}</text><text x="${X(xv)}" y="${Hh-pb+18}" text-anchor="middle" font-size="12" fill="var(--mute)">${fmt(xv,2)}</text>`}
+   g+=`<text x="${(pl+Wd-pr)/2}" y="${Hh-6}" text-anchor="middle" font-size="13" fill="var(--mute)">Recall(ship) → знаходить більше кораблів</text><text transform="translate(14 ${(pt+Hh-pb)/2}) rotate(-90)" text-anchor="middle" font-size="13" fill="var(--mute)">F1-macro →</text>`;
+   const sp=S.map(r=>r.c.speed);
+   const placed=[];
+   const pts=[...S].sort((a,b)=>b.m.f1-a.m.f1).map(r=>{const rr=6+10*r.c.speed,isW=r===win,lx=X(r.m.rs),ly=Y(r.m.f1);const right=lx<Wd-150;
+     const lbl=small?r.m.n.split(' ')[0]:r.m.n,tw=lbl.length*7.2,tx=lx+(right?rr+5:-rr-5),x0=right?tx:tx-tw;let ty=ly+4;
+     for(let k=0;k<8;k++){const hit=placed.find(p=>Math.abs(p.y-ty)<15&&x0<p.x1&&x0+tw>p.x0);if(!hit)break;ty=hit.y+15}
+     placed.push({x0,x1:x0+tw,y:ty});
+     const lead=Math.abs(ty-ly-4)>2?`<line x1="${lx}" y1="${ly}" x2="${tx}" y2="${ty-4}" stroke="var(--mute)" stroke-width=".7"/>`:'';
+     return `<circle cx="${lx}" cy="${ly}" r="${rr}" fill="${isW?'var(--acc)':'var(--ink)'}" fill-opacity="${isW?.9:.18}" stroke="${isW?'var(--acc)':'var(--ink)'}"/>${lead}<text x="${tx}" y="${ty}" text-anchor="${right?'start':'end'}" font-size="12.5" font-weight="${isW?600:500}" fill="var(--ink)">${esc(lbl)}</text>`}).join('');
+   s.innerHTML=g+pts};
+  draw();if(scRO)scRO.disconnect();scRO=new ResizeObserver(draw);scRO.observe(s);
+}
+CRIT.forEach(c=>$('s-'+c.k).addEventListener('input',e=>{W[c.k]=+e.target.value;document.querySelectorAll('[data-p]').forEach(b=>b.setAttribute('aria-pressed','false'));render()}));
+$('presets').addEventListener('click',e=>{const b=e.target.closest('[data-p]');if(!b)return;W={...PRESETS[+b.dataset.p].w};document.querySelectorAll('[data-p]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));render()});
+$('onlyC').addEventListener('change',render);
+$('board').addEventListener('click',e=>{const r=e.target.closest('.row');if(r){sel=r.dataset.n;render()}});
+$('board').addEventListener('keydown',e=>{const r=e.target.closest('.row');if(r&&(e.key==='Enter'||e.key===' ')){e.preventDefault();sel=r.dataset.n;render()}});
+
+function loadJSON(txt){
+  try{const d=JSON.parse(txt);let n=0;
+    for(const [name,v] of Object.entries(d.models||{})){const m=MODELS.find(x=>x.n===name);if(!m||!v.cv)continue;
+      m.f1=+v.cv.f1_macro;m.rs=+v.cv.recall_ship;m.ps=+v.cv.precision_ship;m.acc=+v.cv.accuracy;m.fit=+v.cv.fit_s;m.pr=Math.max(1e-3,1000*v.cv.predict_s_per_1k);m.approx=[];n++}
+    if(!n)throw new Error('немає моделей');
+    contenders=Array.isArray(d.contenders)?d.contenders.map(String):null;
+    if(d.priorities)W={f1:Math.round(100*d.priorities.f1),ship:Math.round(100*d.priorities.ship),speed:Math.round(100*d.priorities.speed),interp:Math.round(100*d.priorities.interp)};
+    srcLbl=`Lab12: групова 5-fold CV на train, однакові фолди для всіх моделей (згенеровано ${String(d.generated_at||'')}). Претенденти — за парним бутстрепом. Фінальна модель ноутбука: ${String(d.final_model||'—')}.`;
+    $('dropMsg').textContent=`Оновлено ${n} моделей`;sel=null;render();
+  }catch(err){$('dropMsg').textContent='Не вдалося прочитати файл: '+err.message}
+}
+
+
+
+
+
+render();
+}
+</script>
+</body>
+</html>
