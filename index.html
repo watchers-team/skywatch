@@ -16,6 +16,7 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--tgt);outline-o
 @keyframes sweep{to{transform:rotate(360deg)}}
 .tabs{display:flex;gap:6px;background:var(--panel);padding:5px;border-radius:12px;box-shadow:var(--glow)}
 .tabs button{padding:9px 16px;border-radius:9px;color:var(--mute);font-weight:600}
+.tabs .arena-tab{padding:9px 16px;border-radius:9px;color:var(--tgt);font-weight:700;text-decoration:none;display:flex;align-items:center}.tabs .arena-tab:hover{background:var(--panel2)}
 .tabs button[aria-selected=true]{background:var(--panel2);color:var(--ink);box-shadow:inset 0 -2px 0 var(--tgt)}
 .bal[aria-pressed=true]{color:#1a0a00;background:var(--ship)}.bal b{font-weight:800}
 .snd{padding:8px 12px;border-radius:10px;background:var(--panel);color:var(--mute);box-shadow:var(--glow)}
@@ -105,10 +106,10 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--tgt);outline-o
    <button role="tab" data-m="duel" aria-selected="true">Дуель</button>
    <button role="tab" data-m="hunt" aria-selected="false">Полювання</button>
    <button role="tab" data-m="recon" aria-selected="false">Розвідка</button>
+   <a href="arena.html" class="arena-tab" title="Арена класифікаторів">Арена →</a>
   </div>
   <button class="snd bal" id="bal" aria-pressed="true" title="Перемкнути: модель як є / з урахуванням дисбалансу класів">⚖ Дисбаланс: <b>враховано</b></button>
-  <button class="snd" id="snd" aria-pressed="true">Звук: увімк.</button>
-  <a class="snd" href="arena.html" style="text-decoration:none">Арена моделей →</a>
+  <button class="snd" id="snd" aria-pressed="true" title="Звук" aria-label="Звук увімкнено">🔊</button>
  </div>
 
  <section class="mode on" id="duel">
@@ -195,7 +196,7 @@ function beep(ok){ if(!sound) return; try{ AC = AC || new (window.AudioContext||
   o.frequency.setValueAtTime(f[0], t); o.frequency.exponentialRampToValueAtTime(f[1], t+.18);
   g.gain.setValueAtTime(.12, t); g.gain.exponentialRampToValueAtTime(.001, t+.28);
   o.connect(g).connect(AC.destination); o.start(t); o.stop(t+.3); }catch(e){} }
-$('snd').onclick = () => { sound = !sound; $('snd').textContent = 'Звук: ' + (sound ? 'увімк.' : 'вимк.'); $('snd').setAttribute('aria-pressed', sound); };
+$('snd').onclick = () => { sound = !sound; $('snd').textContent = sound ? '🔊' : '🔇'; $('snd').setAttribute('aria-label', sound ? 'Звук увімкнено' : 'Звук вимкнено'); $('snd').setAttribute('aria-pressed', sound); };
 
 /* ---------- в'ювер: зум і рух у межах знімка (без чорних полів) ---------- */
 function Viewer(cv, opt){
